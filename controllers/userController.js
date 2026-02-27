@@ -75,7 +75,6 @@ exports.registerUser = async (req, res) => {
       _id: userId,
       firstName,
       lastName,
-      email,
       phone,
       password: hashedPassword,
     });
