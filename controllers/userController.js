@@ -51,7 +51,7 @@ const generateMonths = () => {
 // REGISTER
 exports.registerUser = async (req, res) => {
   try {
-    const { firstName, lastName, email, phone, password, confirmPassword } = req.body;
+    const { firstName, lastName, phone, password, confirmPassword } = req.body;
 
     // 1️⃣ Password check
     if (password !== confirmPassword) {
@@ -59,9 +59,9 @@ exports.registerUser = async (req, res) => {
     }
 
     // 2️⃣ Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+    const existingUser = await User.findOne({ phone });
     if (existingUser) {
-      return res.status(400).json({ message: "Email or Phone already registered" });
+      return res.status(400).json({ message: "Phone already registered" });
     }
 
     // 3️⃣ Hash password
@@ -102,16 +102,13 @@ exports.registerUser = async (req, res) => {
 
 // LOGIN
 exports.loginUser = async (req, res) => {
-  console.log(req.body)
   try {
     const { identifier, password } = req.body; 
 
     if (!identifier || !password)
       return res.status(400).json({ message: "Identifier and password required" });
 
-    const user = await User.findOne({
-      $or: [{ email: identifier }, { phone: identifier }],
-    });
+    const user = await User.findOne({ phone: identifier });
 
     if (!user) return res.status(400).json({ message: "User not found" });
 
@@ -136,11 +133,11 @@ exports.getUsers = async (req, res) => {
   }};
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { phone } = req.body;
 
-    if (!email) return res.status(400).json({ message: "Email is required" });
+    if (!phone) return res.status(400).json({ message: "Phone is required" });
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ phone });
     if (!user) return res.status(400).json({ message: "User not found" });
 
     // Generate 4-digit code
