@@ -130,7 +130,7 @@ exports.getUsers = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }};
-exports.forgotPassword = async (req, res) => {
+exports.forgotPassword1 = async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -233,5 +233,33 @@ exports.getUser = async (req, res) => {
       success: false,
       error: error.message,
     });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+
+    if (!phone || !password) {
+      return res.status(400).json({ message: "Phone and new password are required" });
+    }
+
+    const user = await User.findOne({ phone });
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    // 🔐 Hash new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // ✅ Update password
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully" });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
   }
 };
