@@ -14,11 +14,8 @@ const getCurrentEthiopianYear = () => {
 
 const UserPayment = new mongoose.Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
+    _id: mongoose.Schema.Types.ObjectId,
+
     months: {
       type: Array,
       required: true,
@@ -34,10 +31,10 @@ const UserPayment = new mongoose.Schema(
         { month: "Ginbot", status: "-" },
         { month: "Sene", status: "-" },
         { month: "Hamle", status: "-" },
-        { month: "Nehase", status: "-" },
-        { month: "Pagume", status: "-" }  // Added Pagume
+        { month: "Nehase", status: "-" }
       ]
     },
+
     year: {
       type: String,
       default: getCurrentEthiopianYear
@@ -45,8 +42,5 @@ const UserPayment = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-// Ensure unique user-year combination
-UserPayment.index({ userId: 1, year: 1 }, { unique: true });
 
 module.exports = mongoose.model("Payment", UserPayment);

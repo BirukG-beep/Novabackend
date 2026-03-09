@@ -8,9 +8,9 @@ const {
   getLastyear
 } = require("../controllers/paymentController");
 
-router.get("/:userId", getPaymentStatus);  // Now expects ?year=...
+router.get("/:userId", getPaymentStatus);
 
-router.post("/", getAllpayment);
+router.post("/",getAllpayment)
 router.put("/updatePaymentStatus", updatePaymentStatus);
-router.get("/:id", getLastyear);
+router.get("/:id",getLastyear )
 module.exports = router;

@@ -53,26 +53,41 @@ exports.registerUser = async (req, res) => {
   try {
     const { firstName, lastName, phone, password, confirmPassword } = req.body;
 
+    // 1️⃣ Password check
     if (password !== confirmPassword) {
       return res.status(400).json({ message: "Passwords do not match" });
     }
 
+    // 2️⃣ Check if user already exists
+    // 3️⃣ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 4️⃣ Generate User ID manually
+    const userId = new mongoose.Types.ObjectId();
+
+    // 5️⃣ Create User
     const user = await User.create({
+      _id: userId,
       firstName,
       lastName,
       phone,
       password: hashedPassword,
     });
 
-    // Create payment record for the current Ethiopian year
-    await Payment.create({
-      userId: user._id,
-      months: generateMonths(),   // your existing function
-      year: getCurrentEthiopianYear(),
+    // 6️⃣ Automatically create Payment document
+    // year and months are handled by defaults in schema
+    console.log("payemnt")
+  await Payment.create({
+  _id: userId,
+  months: generateMonths()
+});
+
+    // 7️⃣ Respond success
+    res.status(201).json({
+      message: "User registered successfully",
+      user
     });
 
-    res.status(201).json({ message: "User registered successfully", user });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
