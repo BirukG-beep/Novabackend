@@ -41,11 +41,19 @@ exports.getAllpayment = async (req, res) => {
 exports.updatePaymentStatus = async (req, res) => {
   console.log("Updating payment status with data:", req.body);
   try {
-    const { userId, month, status } = req.body;
+    const { userId, month, status, year } = req.body;  // Add year
 
-    // Find user's payment record for the current year
-    const payment = await Payment.findById(userId); // same as findOne({_id: userId})
-    if (!payment) return res.status(404).json({ message: "Payment not found" });
+    if (!year) return res.status(400).json({ message: "Year required" });
+
+    let payment = await Payment.findOne({ userId, year });
+    if (!payment) {
+      // Create new record for the year if missing
+      payment = await Payment.create({
+        userId,
+        year,
+        months: generateMonths(),  // Auto-sets past months to "X"
+      });
+    }
 
     // Find the month object
     const monthObj = payment.months.find((m) => m.month === month);
@@ -69,8 +77,14 @@ exports.updatePaymentStatus = async (req, res) => {
   }
 };
 
-exports.getLastyear = async (req , res) =>{
-      const {id} = req.params;
-      const year = lastPayment({id});
-      res.status(200).json({year})
-}
+exports.getLastyear = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const lastPayment = await Payment.findOne({ userId: id }).sort({ year: -1 }).select("year");
+    const year = lastPayment ? lastPayment.year : getCurrentEthiopianYear();
+    res.status(200).json({ year });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
