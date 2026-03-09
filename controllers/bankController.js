@@ -3,6 +3,7 @@ const cloudinary = require("../cloudinaryConfig");
 const LastPayment = require("../models/lastPayment")
 const { toEthiopian } = require("ethiopian-date");
 const lastPayment = require("../models/lastPayment");
+const User = require("../models/user");
 // Create Bank
 exports.createBank = async (req, res) => {
   try {

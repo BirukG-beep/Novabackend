@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const { toEthiopian } = require("ethiopian-date");
 
-// Function to generate Ethiopian year automatically
 const getCurrentEthiopianYear = () => {
   const today = new Date();
   const [ethYear] = toEthiopian(
@@ -12,10 +11,18 @@ const getCurrentEthiopianYear = () => {
   return ethYear.toString();
 };
 
-const UserPayment = new mongoose.Schema(
+const paymentSchema = new mongoose.Schema(
   {
-    _id: mongoose.Schema.Types.ObjectId,
-
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    year: {
+      type: String,
+      required: true,
+      default: getCurrentEthiopianYear,
+    },
     months: {
       type: Array,
       required: true,
@@ -31,16 +38,15 @@ const UserPayment = new mongoose.Schema(
         { month: "Ginbot", status: "-" },
         { month: "Sene", status: "-" },
         { month: "Hamle", status: "-" },
-        { month: "Nehase", status: "-" }
-      ]
+        { month: "Nehase", status: "-" },
+        // Pagume is handled separately if needed
+      ],
     },
-
-    year: {
-      type: String,
-      default: getCurrentEthiopianYear
-    }
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Payment", UserPayment);
+// Ensure one payment document per user per year
+paymentSchema.index({ userId: 1, year: 1 }, { unique: true });
+
+module.exports = mongoose.model("Payment", paymentSchema);
