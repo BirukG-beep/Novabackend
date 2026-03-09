@@ -4,17 +4,13 @@ const router = express.Router();
 const {
   getPaymentStatus,
   updatePaymentStatus,
-  getAllpayment
-  // getLastyear removed (not exported)
+  getAllpayment,
+  getLastyear
 } = require("../controllers/paymentController");
 
-// Get payment status for a specific user (by userId)
 router.get("/:userId", getPaymentStatus);
 
-// Get all payments for a given year (use query param ?year=...)
-router.get("/", getAllpayment);  // use GET, not POST
-
-// Update payment status
-router.put("/update", updatePaymentStatus);  // changed path to avoid conflict
-
+router.post("/",getAllpayment)
+router.put("/updatePaymentStatus", updatePaymentStatus);
+router.get("/:id",getLastyear )
 module.exports = router;
