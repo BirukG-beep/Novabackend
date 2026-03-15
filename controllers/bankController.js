@@ -52,7 +52,6 @@ exports.createBank = async (req, res) => {
 exports.getBanks = async (req, res) => {
   try {
     const banks = await Bank.find();
-    console.log(banks)
     res.status(200).json({ success: true, banks });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -64,13 +63,9 @@ exports.toggleVisibility = async (req, res) => {
   try {
     let { id } = req.params;
 
-    console.log("Raw req.params.id →", JSON.stringify(id));     // better visibility
-    console.log("Length:", id.length);
-
     // Remove accidental leading colon (very common bug pattern)
     if (id.startsWith(':')) {
       id = id.slice(1);
-      console.log("Fixed leading colon → new id:", id);
     }
 
     // Optional: extra safety

@@ -7,7 +7,9 @@ const {
   checkCode,
   getUsers,
   deleteUser,
-  getUser
+  getUser,
+  regiserAll,
+  getGarbageUser
 } = require("../controllers/userController");
 
 // Register
@@ -22,10 +24,14 @@ router.post("/forgot-password", forgotPassword);
 // Check code
 router.post("/check-code", checkCode);
 
-router.get("/:id",getUser)
-
 router.get("/", getUsers)
 
 router.post("/delete-user" , deleteUser)
+
+router.post("/registerAll" , regiserAll)
+
+router.get("/garbage" , getGarbageUser)
+
+router.get("/:id",getUser)
 
 module.exports = router;

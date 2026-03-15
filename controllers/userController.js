@@ -3,7 +3,9 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const Payment = require("../models/Payment");
+const Garbage = require("../models/garbage")
 const mongoose = require("mongoose");
+const UserGarbage = require("../models/UserGarbage")
 
 // Helper to generate 4-digit code
 const generateCode = () => Math.floor(1000 + Math.random() * 9000).toString();
@@ -76,12 +78,10 @@ exports.registerUser = async (req, res) => {
 
     // 6️⃣ Automatically create Payment document
     // year and months are handled by defaults in schema
-    console.log("payemnt")
-  await Payment.create({
+ const result =  await Payment.create({
   _id: userId,
   months: generateMonths()
 });
-
     // 7️⃣ Respond success
     res.status(201).json({
       message: "User registered successfully",
@@ -193,10 +193,10 @@ exports.checkCode = async (req, res) => {
 exports.deleteUser = async (req, res) => {
   try {
     const { id } = req.body;
+    // const userforDelete = await User.find(id);
+    // const result = UserGarbage.create(userforDelete)
     const user = await User.findByIdAndDelete(id);
     const payment = await Payment.findByIdAndDelete(id);
-    console.log(user , payment)
-
     if (!user) return res.status(404).json({ message: "User not found" });
     res.status(200).json({ message: "User and associated payment record deleted successfully" });
   } catch (error) {
@@ -258,3 +258,103 @@ exports.forgotPassword = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+exports.regiserAll = async (req, res) => {
+  try {
+    const registered = req.body;
+
+    const users = await User.find();
+    const payments = await Payment.find();
+
+    // 1️⃣ Phones from new registration
+    const registeredPhones = registered.map(u => u.phone);
+
+    // 2️⃣ Users NOT in registered list
+    const usersToGarbage = users
+      .filter(u => !registeredPhones.includes(u.phone))
+      .map(u => {
+        const userData = u.toObject(); // keep _id
+        return {
+          ...userData,
+          deletedAt: new Date()
+        };
+      });
+
+    // 3️⃣ Save to UserGarbage with SAME _id
+    if (usersToGarbage.length > 0) {
+      await UserGarbage.insertMany(usersToGarbage);
+    }
+
+    // 4️⃣ Move ALL payments to Garbage (same _id)
+    for (const payment of payments) {
+
+      let garbage = await Garbage.findById(payment._id);
+
+      if (!garbage) {
+        garbage = new Garbage({
+          _id: payment._id,
+          data: []
+        });
+      }
+
+      garbage.data.push(payment);
+      await garbage.save();
+    }
+
+    // 5️⃣ Delete all users and payments
+    await User.deleteMany({});
+    await Payment.deleteMany({});
+
+    // 6️⃣ Remove duplicate phones
+    const uniqueUsers = [
+      ...new Map(registered.map(u => [u.phone, u])).values()
+    ];
+
+    // 7️⃣ Register again
+    for (const userData of uniqueUsers) {
+
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const userId = new mongoose.Types.ObjectId();
+
+      await User.create({
+        _id: userId,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        phone: userData.phone,
+        password: hashedPassword
+      });
+
+      await Payment.create({
+        _id: userId,
+        months: generateMonths()
+      });
+    }
+
+    res.status(200).json({
+      message: "Users migrated and registered successfully"
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+exports.getGarbageUser = async (req , res) =>{
+
+  try{
+   const usersGarbage = await UserGarbage.find();
+   const GarbagePayment = await Garbage.find();
+
+  //  console.log(usersGarbage)
+  //  console.log(GarbagePayment)
+   res.status(200).json({users:usersGarbage , garbage:GarbagePayment})
+
+  }
+  catch(error){
+    console.log(error)
+    res.status(500).json({
+      success: false,
+      message: error
+    });
+  }
+}

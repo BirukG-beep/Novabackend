@@ -7,6 +7,7 @@ require("dotenv").config();
 const userRoutes = require("./routes/userRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const bankRoutes = require("./routes/bankRoutes");
+const fileRoutes = require("./routes/fileRoutes")
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(cors());
 app.use("/api/auth", userRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/banks", bankRoutes);
+app.use("/api/file",fileRoutes)
 
 // ✅ MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)

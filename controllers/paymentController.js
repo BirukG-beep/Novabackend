@@ -20,15 +20,11 @@ exports.getPaymentStatus = async (req, res) => {
 exports.getAllpayment = async (req, res) => {
   try {
     const { year } = req.query;
-    console.log(year)
+
 
     const payments = await Payment.find({
       year: year.toString(),   // 🔥 convert to string
     });
-
-    console.log("Searching year:", year);
-    console.log("Type of year:", typeof year);
-    console.log("Result:", payments);
 
     res.status(200).json({ payments });
   } catch (err) {
@@ -39,7 +35,6 @@ exports.getAllpayment = async (req, res) => {
 
 // PUT /api/updatePaymentStatus
 exports.updatePaymentStatus = async (req, res) => {
-  console.log("Updating payment status with data:", req.body);
   try {
     const { userId, month, status } = req.body;
 
@@ -60,8 +55,6 @@ exports.updatePaymentStatus = async (req, res) => {
     payment.markModified("months");
 
     await payment.save();
-
-    console.log("Month status updated:", monthObj || { month, status });
     res.status(200).json({ message: "Status updated successfully" });
   } catch (err) {
     console.error(err);
