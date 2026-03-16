@@ -266,26 +266,26 @@ exports.regiserAll = async (req, res) => {
     const users = await User.find();
     const payments = await Payment.find();
 
-    // 1️⃣ Phones from new registration
+    // 1️⃣ Get phones from new registration list
     const registeredPhones = registered.map(u => u.phone);
 
-    // 2️⃣ Users NOT in registered list
+    // 2️⃣ Users NOT in registered list -> move to garbage
     const usersToGarbage = users
       .filter(u => !registeredPhones.includes(u.phone))
       .map(u => {
-        const userData = u.toObject(); // keep _id
+        const userData = u.toObject();
         return {
           ...userData,
           deletedAt: new Date()
         };
       });
 
-    // 3️⃣ Save to UserGarbage with SAME _id
+    // 3️⃣ Save them in UserGarbage
     if (usersToGarbage.length > 0) {
       await UserGarbage.insertMany(usersToGarbage);
     }
 
-    // 4️⃣ Move ALL payments to Garbage (same _id)
+    // 4️⃣ Move all payments to Garbage
     for (const payment of payments) {
 
       let garbage = await Garbage.findById(payment._id);
@@ -310,10 +310,15 @@ exports.regiserAll = async (req, res) => {
       ...new Map(registered.map(u => [u.phone, u])).values()
     ];
 
-    // 7️⃣ Register again
+    // 7️⃣ Register users again
     for (const userData of uniqueUsers) {
 
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      // prevent double hashing
+      const password =
+        userData.password.startsWith("$2b$")
+          ? userData.password
+          : await bcrypt.hash(userData.password, 10);
+
       const userId = new mongoose.Types.ObjectId();
 
       await User.create({
@@ -321,7 +326,7 @@ exports.regiserAll = async (req, res) => {
         firstName: userData.firstName,
         lastName: userData.lastName,
         phone: userData.phone,
-        password: hashedPassword
+        password
       });
 
       await Payment.create({
