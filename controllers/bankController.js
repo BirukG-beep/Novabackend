@@ -106,6 +106,7 @@ exports.deleteBank = async (req, res) => {
 exports.getUserBanks = async (req, res) => {
   try {
     const userId = req.params.userId;
+    console.log(userId)
     const banks = await Bank.find({ userId: userId });
     if (!banks) {
       return res.status(404).json({ message: "No banks found for this user" });
