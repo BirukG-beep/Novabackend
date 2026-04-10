@@ -4,13 +4,13 @@ const router = express.Router();
 const {
   getPaymentStatus,
   updatePaymentStatus,
-  getAllpayment,
+  getAllPayments,
   getLastyear
 } = require("../controllers/paymentController");
 
 router.get("/:userId", getPaymentStatus);
 
-router.post("/",getAllpayment)
+router.post("/",getAllPayments)
 router.put("/updatePaymentStatus", updatePaymentStatus);
 router.get("/:id",getLastyear )
 module.exports = router;

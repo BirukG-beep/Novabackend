@@ -8,7 +8,7 @@ const {
   getUsers,
   deleteUser,
   getUser,
-  regiserAll,
+  registerAll,
   getGarbageUser,
   deleteGarbagteUser
 } = require("../controllers/userController");
@@ -29,7 +29,7 @@ router.get("/", getUsers)
 
 router.post("/delete-user" , deleteUser)
 
-router.post("/registerAll" , regiserAll)
+router.post("/registerAll" , registerAll)
 
 router.get("/garbage" , getGarbageUser)
 

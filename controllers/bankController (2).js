@@ -5,10 +5,10 @@ const { toEthiopian } = require("ethiopian-date");
 const lastPayment = require("../models/lastPayment");
 const User = require("../models/user");
 const pool = require('../db')
-const { v4: uuidv4 } = require("uuid");
 // Create Bank
 exports.createBank = async (req, res) => {
   const client = await pool.connect();
+  console.log("Connected to PostgreSQL" , req.body);
   try {
     const { bankName, to, accountNumber, userId } = req.body;
     const file = req.file;
@@ -22,16 +22,14 @@ exports.createBank = async (req, res) => {
       folder: "banks",
     });
 
-        const bankId = uuidv4();
     // 1️⃣ Insert into banks table
     const insertBankQuery = `
-      INSERT INTO banks (id , bank_name, "to", account_number, image_url, user_id)
-      VALUES ($1, $2, $3, $4, $5 , $6)
+      INSERT INTO banks (bank_name, "to", account_number, image_url, user_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *;
     `;
 
     const bankResult = await client.query(insertBankQuery, [
-      bankId,
       bankName,
       to,
       accountNumber,
@@ -58,10 +56,10 @@ exports.createBank = async (req, res) => {
     // 4️⃣ Insert if not exists
     if (checkResult.rows.length === 0) {
       const insertLastPaymentQuery = `
-        INSERT INTO last_payments (id, user_id, year)
-        VALUES ($1, $2, $3)
+        INSERT INTO last_payments (user_id, year)
+        VALUES ($1, $2)
       `;
-      await client.query(insertLastPaymentQuery, [uuidv4(), userId, year.toString()]);
+      await client.query(insertLastPaymentQuery, [userId, year.toString()]);
     }
 
     res.status(201).json({ success: true, bank });

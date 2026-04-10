@@ -6,7 +6,6 @@ const Garbage = require("../models/garbage")
 const mongoose = require("mongoose");
 const UserGarbage = require("../models/UserGarbage");
 const pool = require("../db"); // pg Pool instance
-const { v4: uuidv4 } = require("uuid"); // add this at top of file
 
 // Helper to generate 4-digit code
 const generateCode = () => Math.floor(1000 + Math.random() * 9000).toString();
@@ -81,33 +80,26 @@ exports.registerUser = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate UUID for new user
-    const userId = uuidv4();
-
-    // Insert user with UUID
+    // Insert user
     const insertUserQuery = `
-      INSERT INTO users (id, first_name, last_name, phone, password)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO users (first_name, last_name, phone, password)
+      VALUES ($1, $2, $3, $4)
       RETURNING id, first_name, last_name, phone, register_date;
     `;
-    const { rows } = await client.query(insertUserQuery, [userId, firstName, lastName, phone, hashedPassword]);
+    const { rows } = await client.query(insertUserQuery, [firstName, lastName, phone, hashedPassword]);
     const user = rows[0];
 
-    console.log(user);
+    console.log(user)
 
     // Insert payment with JSONB months
     const months = generateMonths();
     const ethYear = getCurrentEthiopianYear();
 
-// Generate UUID for payment
-const paymentId = uuidv4();
-
-const insertPaymentQuery = `
-  INSERT INTO payments (id, user_id, months, eth_year)
-  VALUES ($1, $2, $3::jsonb, $4)
-`;
-
-await client.query(insertPaymentQuery, [paymentId, user.id, JSON.stringify(months), ethYear]);
+    const insertPaymentQuery = `
+      INSERT INTO payments (user_id, months, eth_year)
+      VALUES ($1, $2::jsonb, $3)
+    `;
+    await client.query(insertPaymentQuery, [user.id, JSON.stringify(months), ethYear]);
 
     res.status(201).json({ message: "User registered successfully", user });
 
@@ -282,43 +274,35 @@ exports.checkCode = async (req, res) => {
 exports.deleteUser = async (req, res) => {
   console.log("deleteUser called with body:", req.body);
 
-  const client = await pool.connect();
-
   try {
     const { id } = req.body;
 
-    await client.query("BEGIN");
-
-    // 1. Delete from all dependent tables
-    await client.query(`DELETE FROM payments WHERE user_id = $1`, [id]);
-    await client.query(`DELETE FROM last_payments WHERE user_id = $1`, [id]);
-    await client.query(`DELETE FROM banks WHERE user_id = $1`, [id]); // if exists
+    // 1. Delete payment first (important for FK constraints)
+    await pool.query(
+      `DELETE FROM payments WHERE user_id = $1`,
+      [id]
+    );
 
     // 2. Delete user
-    const result = await client.query(
+    const result = await pool.query(
       `DELETE FROM users WHERE id = $1 RETURNING *`,
       [id]
     );
 
     if (result.rows.length === 0) {
-      await client.query("ROLLBACK");
       return res.status(404).json({ message: "User not found" });
     }
 
-    await client.query("COMMIT");
-
     res.status(200).json({
-      message: "User and all related data deleted successfully",
+      message: "User and associated payment record deleted successfully"
     });
 
   } catch (error) {
-    await client.query("ROLLBACK");
     console.error(error);
     res.status(500).json({ message: "Server Error" });
-  } finally {
-    client.release();
   }
 };
+
 
 exports.forgotPassword = async (req, res) => {
   try {
@@ -328,24 +312,17 @@ exports.forgotPassword = async (req, res) => {
       return res.status(400).json({ message: "Phone and new password are required" });
     }
 
-    // 1️⃣ Check if user exists
-    const userResult = await pool.query(
-      `SELECT * FROM users WHERE phone = $1`,
-      [phone]
-    );
-
-    if (userResult.rows.length === 0) {
+    const user = await User.findOne({ phone });
+    if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
 
-    // 2️⃣ Hash the new password
+    // 🔐 Hash new password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3️⃣ Update password in database
-    await pool.query(
-      `UPDATE users SET password = $1 WHERE phone = $2`,
-      [hashedPassword, phone]
-    );
+    // ✅ Update password
+    user.password = hashedPassword;
+    await user.save();
 
     res.status(200).json({ message: "Password reset successfully" });
 
@@ -365,10 +342,7 @@ exports.registerAll = async (req, res) => {
     const paymentsResult = await pool.query(`SELECT * FROM payments`);
 
     const users = usersResult.rows;
-
     const payments = paymentsResult.rows;
-
-    console.log("we reached payment")
 
     // 2️⃣ Identify users to move to user_garbage (those NOT in new registered list)
     const registeredIds = new Set(registered.map(u => u.id)); // ids from frontend
@@ -384,8 +358,6 @@ exports.registerAll = async (req, res) => {
         [u.id, u.first_name, u.last_name, u.phone, u.password, ethYear]
       );
 
-
-      console.log("step 2")
       // Optionally, also move their payments to garbage
       const updatePayment = payments.filter(p => p.user_id !== u.id);
       for (const payment of updatePayment) {
@@ -398,20 +370,16 @@ exports.registerAll = async (req, res) => {
       for (const payment of userPayments) {
         await pool.query(
           `INSERT INTO garbage (id, data, created_at )
-           VALUES ($1, $2, $3 )
+           VALUES ($1, $2, $3 , $4)
            ON CONFLICT (id) DO NOTHING`,
           [payment.id, JSON.stringify(payment), new Date()  ]
         );
       }
     }
 
-    console.log("step 3")
-
     // 3️⃣ Delete archived users and their payments
  // 3️⃣ Delete archived users and their payments
 const archiveIds = usersToArchive.map(u => u.id);
-
-console.log("these is also archiveids" , archiveIds);
 
 if (archiveIds.length > 0) {
   // 1️⃣ Move last_payments to last_payments_garbage
@@ -429,10 +397,6 @@ if (archiveIds.length > 0) {
       [lp.id, lp.user_id,  lp.year, lp. created_at   , lp.updated_at]
     );
   }
-
-
-  console.log("Archive IDs:", archiveIds);
-
 
   // 2️⃣ Delete last_payments rows
   await pool.query(`DELETE FROM last_payments WHERE user_id = ANY($1)`, [archiveIds]);
@@ -469,9 +433,9 @@ if (archiveIds.length > 0) {
 
       // Insert new payment
       await pool.query(
-        `INSERT INTO payments (id , user_id, months , eth_year)
-         VALUES ($1, $2, $3 , $4)`,
-        [uuidv4(),userData.id, JSON.stringify(generateMonths()) , getCurrentEthiopianYear()]
+        `INSERT INTO payments (user_id, months , eth_year)
+         VALUES ($1, $2, $3)`,
+        [userData.id, JSON.stringify(generateMonths()) , getCurrentEthiopianYear()]
       );
     }
 
@@ -504,26 +468,20 @@ exports.getGarbageUser = async (req, res) => {
     });
   }
 };
-
-
 exports.deleteGarbagteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Delete the user from user_garbage table
-    const result = await pool.query(
-      `DELETE FROM user_garbage WHERE id = $1 RETURNING *`,
-      [id]
-    );
+    const deleted = await Garbage.findByIdAndDelete(id);
 
-    if (result.rows.length === 0) {
+    if (!deleted) {
       return res.status(404).json({ message: "User not found" });
     }
 
     res.status(200).json({ message: "User deleted successfully" });
 
   } catch (err) {
-    console.error(err);
+    console.log(err);
     res.status(500).json({ message: "Server error" });
   }
 };
