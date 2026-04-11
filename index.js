@@ -16,8 +16,9 @@ app.use(express.json());
 app.use(
   cors({
     origin: [
-      "http://localhost:3000",          // for local development
-      "http://novafitnesscenter.com",   // deployed frontend
+      "http://localhost:3000",
+    "https://novafitnesscenter.com",
+    "https://www.novafitnesscenter.com"
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true, // if your frontend sends cookies or auth headers
